@@ -1,0 +1,13 @@
+*.py[co]
+.Python
+.DS_Store
+/docs/_build/
+/bin/
+/build/
+/include/
+/lib/
+/local
+/man/
+/share/
+/src/
+/wheelhouse/
