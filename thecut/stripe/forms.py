@@ -11,7 +11,7 @@ def _strip_data(data):
 class AccountForm(forms.ModelForm):
 
     class Meta(object):
-        fields = ['_secret_key', 'publishable_key']
+        fields = ['_secret_key', 'publishable_key', 'application']
         model = Account
         widgets = {'_secret_key': forms.TextInput(),
                    'publishable_key': forms.TextInput()}

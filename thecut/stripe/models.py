@@ -25,14 +25,13 @@ class APIDataMixin(models.Model):
 
     _api_data = JSONField('API data', null=True, blank=False, editable=False)
 
-    _api_data_updated_at = MonitorField('API data updated at', null=True,
-                                        blank=False, monitor='_api_data',
-                                        editable=False)
+    _api_data_updated_at = MonitorField('API data updated at',
+                                        monitor='_api_data', editable=False)
 
     def api_data(self, refresh=False):
         if refresh or not self._api_data:
             self._api_data = self._get_api_data()
-            self.save(update_fields=['_api_data'])
+            self.save(update_fields=['_api_data', '_api_data_updated_at'])
         return self._api_data
 
     class Meta(object):
@@ -57,7 +56,7 @@ class Account(APIDataMixin, models.Model):
     """Stripe Account."""
 
     application = models.ForeignKey('stripe.Application', null=True,
-                                    related_name='accounts', editable=False,
+                                    related_name='accounts',
                                     on_delete=models.PROTECT)
 
     _secret_key = models.TextField('secret key', blank=True, default='')
@@ -65,7 +64,10 @@ class Account(APIDataMixin, models.Model):
     publishable_key = models.TextField(blank=True, default='')
 
     def __str__(self):
-        return self.api_data().get('business_name')
+        if self.secret_key:
+            return self.api_data().get('business_name')
+        else:
+            return 'Disconnected'
 
     def _get_api_data(self):
         return stripe.Account.retrieve(api_key=self.secret_key)
@@ -89,14 +91,16 @@ class Account(APIDataMixin, models.Model):
 
     @property
     def secret_key(self):
-        return self._secret_key or self.oauth2_credentials.access_token
+        return self._secret_key or (
+            self.oauth2_credentials and self.oauth2_credentials.access_token)
 
     def store_credentials(self, code):
         self.oauth2_credentials = self._get_connect_credentials(code)
     store_credentials.alters_data = True
 
     def stripe_id(self):
-        return self.api_data().get('id')
+        if self.secret_key:
+            return self.api_data().get('id')
     stripe_id.short_description = 'Stripe ID'
 
 
@@ -104,7 +108,8 @@ class Account(APIDataMixin, models.Model):
 class Application(models.Model):
     """Stripe Connect Application."""
 
-    account = models.ForeignKey('stripe.Account', related_name='applications',
+    account = models.ForeignKey('stripe.StandardAccount',
+                                related_name='applications',
                                 on_delete=models.PROTECT)
 
     client_id = models.TextField('Client ID')
@@ -112,20 +117,29 @@ class Application(models.Model):
     def __str__(self):
         return '{0}'.format(self.client_id)
 
-    def _get_connect_flow(self):
+    def _get_connect_flow(self, redirect_uri=None):
         return OAuth2WebServerFlow(
             client_id=self.client_id,
             client_secret=self.account.secret_key,
             scope=['read_write'],
             auth_uri=settings.CONNECT_AUTHORIZE_URL,
             token_uri=settings.CONNECT_ACCESS_TOKEN_URL,
-            redirect_uri='http://127.0.0.1:8000/',  # TODO
+            redirect_uri=redirect_uri,
             revoke_uri=None,
             user_agent=settings.USER_AGENT)
 
-    def get_connect_authorize_url(self):
-        flow = self._get_connect_flow()
+    def get_connect_authorize_url(self, redirect_uri):
+        flow = self._get_connect_flow(redirect_uri)
         return flow.step1_get_authorize_url()
+
+
+class ConnectedAccount(Account):
+
+    objects = managers.ConnectedAccountManager.for_queryset_class(
+        models.query.QuerySet)()
+
+    class Meta(Account.Meta):
+        proxy = True
 
 
 @python_2_unicode_compatible
@@ -169,3 +183,12 @@ class Plan(APIDataMixin, models.Model):
 
     def __str__(self):
         return self.api_data().get('name')
+
+
+class StandardAccount(Account):
+
+    objects = managers.StandardAccountManager.for_queryset_class(
+        models.query.QuerySet)()
+
+    class Meta(Account.Meta):
+        proxy = True
