@@ -82,6 +82,9 @@ class CustomerAdmin(admin.ModelAdmin):
         queryset = super(CustomerAdmin, self).get_queryset(*args, **kwargs)
         return queryset.select_related('account', 'account__application')
 
+    def has_add_permission(self, *args, **kwargs):
+        return False
+
 admin.site.register(Customer, CustomerAdmin)
 
 
@@ -99,6 +102,9 @@ class PlanAdmin(admin.ModelAdmin):
     def get_queryset(self, *args, **kwargs):
         queryset = super(PlanAdmin, self).get_queryset(*args, **kwargs)
         return queryset.select_related('account', 'account__application')
+
+    def has_add_permission(self, *args, **kwargs):
+        return False
 
 admin.site.register(Plan, PlanAdmin)
 
@@ -132,5 +138,8 @@ class SubscriptionAdmin(admin.ModelAdmin):
         queryset = super(SubscriptionAdmin, self).get_queryset(*args, **kwargs)
         return queryset.select_related('plan', 'customer', 'account',
                                        'account__application')
+
+    def has_add_permission(self, *args, **kwargs):
+        return False
 
 admin.site.register(Subscription, SubscriptionAdmin)
