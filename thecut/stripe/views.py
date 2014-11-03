@@ -53,7 +53,6 @@ class OAuth2CallbackView(generic.View):
             return HttpResponseBadRequest()
         else:
             self.object.store_credentials(code)
-            print self.object.api_data(refresh=True)
             return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):

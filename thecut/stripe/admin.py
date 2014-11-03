@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from . import forms, views
 from .models import (Application, ConnectedAccount, Customer, Plan,
-                     StandardAccount)
+                     StandardAccount, Subscription)
 from copy import copy
 from django.conf.urls import patterns, url
 from django.contrib import admin
@@ -114,3 +114,23 @@ class StandardAccountAdmin(admin.ModelAdmin):
     readonly_fields = ['stripe_id', '_api_data_updated_at']
 
 admin.site.register(StandardAccount, StandardAccountAdmin)
+
+
+class SubscriptionAdmin(admin.ModelAdmin):
+
+    list_display = ['__str__', 'stripe_id', 'customer', 'account',
+                    'application']
+
+    list_filter = ['plan', 'customer', 'account', 'account__application']
+
+    readonly_fields = ['stripe_id', '_api_data_updated_at']
+
+    def application(self, obj):
+        return obj.account.application
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(SubscriptionAdmin, self).get_queryset(*args, **kwargs)
+        return queryset.select_related('plan', 'customer', 'account',
+                                       'account__application')
+
+admin.site.register(Subscription, SubscriptionAdmin)

@@ -168,7 +168,7 @@ class Customer(APIDataMixin, models.Model):
 
 @python_2_unicode_compatible
 class Plan(APIDataMixin, models.Model):
-    """Stripe Subscription Plan."""
+    """Stripe Payment Plan."""
 
     account = models.ForeignKey('stripe.Account', related_name='plans',
                                 editable=False, on_delete=models.PROTECT)
@@ -192,3 +192,30 @@ class StandardAccount(Account):
 
     class Meta(Account.Meta):
         proxy = True
+
+
+@python_2_unicode_compatible
+class Subscription(APIDataMixin, models.Model):
+    """Stripe Customer Subscription."""
+
+    account = models.ForeignKey('stripe.Account', related_name='subscriptions',
+                                editable=False, on_delete=models.PROTECT)
+
+    stripe_id = models.CharField('Stripe ID', max_length=255, db_index=True,
+                                 editable=False)
+
+    customer = models.ForeignKey('stripe.Customer',
+                                 related_name='subscriptions', editable=False,
+                                 on_delete=models.PROTECT)
+
+    plan = models.ForeignKey('stripe.Plan', related_name='subscriptions',
+                             editable=False, on_delete=models.PROTECT)
+
+    objects = managers.SubscriptionManager.for_queryset_class(
+        models.query.QuerySet)()
+
+    class Meta(object):
+        unique_together = ['account', 'stripe_id']
+
+    def __str__(self):
+        return self.plan.api_data().get('name')
