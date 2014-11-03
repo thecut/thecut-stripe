@@ -67,7 +67,24 @@ class ConnectedAccountAdmin(admin.ModelAdmin):
 admin.site.register(ConnectedAccount, ConnectedAccountAdmin)
 
 
+class SubscriptionInline(admin.StackedInline):
+
+    model = Subscription
+
+    extra = 0
+
+    readonly_fields = ['stripe_id', '_api_data_updated_at']
+
+    def has_add_permission(self, *args, **kwarg):
+        return False
+
+    def has_delete_permission(self, *args, **kwarg):
+        return False
+
+
 class CustomerAdmin(admin.ModelAdmin):
+
+    inlines = [SubscriptionInline]
 
     list_display = ['__str__', 'stripe_id', 'account', 'application']
 
