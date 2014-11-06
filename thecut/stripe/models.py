@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
-from . import managers, settings
+from . import managers, querysets, settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
 from model_utils.fields import MonitorField
+from model_utils.managers import PassThroughManager
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.django_orm import CredentialsField, Storage
 import stripe
@@ -153,7 +154,7 @@ class Customer(APIDataMixin, models.Model):
                                  editable=False)
 
     objects = managers.CustomerManager.for_queryset_class(
-        models.query.QuerySet)()
+        querysets.CustomerQuerySet)()
 
     class Meta(object):
         unique_together = ['account', 'stripe_id']

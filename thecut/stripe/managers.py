@@ -14,12 +14,15 @@ class ConnectedAccountManager(PassThroughManager):
 
 class CustomerManager(PassThroughManager):
 
-    def sync(self):  # Only works from account
-        response = stripe.Customer.all(api_key=self.instance.secret_key,
-                                       include=['total_count'])['data']
-        for data in response:
-            self.get_or_create(stripe_id=data['id'],
-                               defaults={'_api_data': data})
+    def sync(self, account=None):
+        # TODO: Pagination
+        response = stripe.Customer.all(
+            api_key=self._get_api_key(account=account),
+            include=['total_count'])
+        for item in response['data']:
+            extra_kwargs = {'account': account} if account else {}
+            self.get_or_create(stripe_id=item['id'],
+                               defaults={'_api_data': item}, **extra_kwargs)
 
 
 class PlanManager(PassThroughManager):
