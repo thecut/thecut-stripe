@@ -160,7 +160,7 @@ class Customer(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.api_data().get('email')
+        return self.api_data().get('email') or self.stripe_id
 
     def _get_api_data(self):
         return stripe.Customer.retrieve(id=self.stripe_id,
@@ -183,7 +183,7 @@ class Plan(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.api_data().get('name')
+        return self.api_data().get('name') or self.stripe_id
 
 
 class StandardAccount(Account):
@@ -219,4 +219,4 @@ class Subscription(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.plan.api_data().get('name')
+        return self.plan.api_data().get('name') or self.stripe_id
