@@ -53,7 +53,8 @@ class SubscriptionManager(PassThroughManager):
             id=customer.stripe_id).subscriptions.all(include=['total_count'])
         for item in response['data']:
             plan, created = customer.account.plans.get_or_create(
-                stripe_id=item['plan']['id'])
+                stripe_id=item['plan']['id'],
+                defaults={'_api_data': item['plan']})
             self.get_or_create(stripe_id=item['id'],
                                account=customer.account, customer=customer,
                                plan=plan, defaults={'_api_data': item})
