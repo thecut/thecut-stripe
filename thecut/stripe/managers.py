@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from model_utils.managers import PassThroughManager
-import stripe
 
 
 class ConnectedAccountManager(PassThroughManager):
@@ -16,23 +15,24 @@ class CustomerManager(PassThroughManager):
 
     def sync(self, account=None):
         # TODO: Pagination
-        response = stripe.Customer.all(
-            api_key=self._get_api_key(account=account),
-            include=['total_count'])
+        account = self._get_account()
+        response = self.model._stripe.Customer.all(
+            api_key=account.secret_key, include=['total_count'])
         for item in response['data']:
-            extra_kwargs = {'account': account} if account else {}
-            self.get_or_create(stripe_id=item['id'],
-                               defaults={'_api_data': item}, **extra_kwargs)
+            self.get_or_create(stripe_id=item['id'], account=account,
+                               defaults={'_api_data': item})
 
 
 class PlanManager(PassThroughManager):
 
-    def sync(self):  # Only works from account
-        response = stripe.Plan.all(api_key=self.instance.secret_key,
-                                   include=['total_count'])['data']
-        for data in response:
-            self.get_or_create(stripe_id=data['id'],
-                               defaults={'_api_data': data})
+    def sync(self, account=None):
+        # TODO: Pagination
+        account = self._get_account()
+        response = self.model._stripe.Plan.all(
+            api_key=account.secret_key, include=['total_count'])
+        for item in response['data']:
+            self.get_or_create(stripe_id=item['id'], account=account,
+                               defaults={'_api_data': item})
 
 
 class StandardAccountManager(PassThroughManager):
@@ -45,14 +45,15 @@ class StandardAccountManager(PassThroughManager):
 
 class SubscriptionManager(PassThroughManager):
 
-    def sync(self):  # Only works from customer
-        response = stripe.Customer.retrieve(
-            id=self.instance.stripe_id,
-            api_key=self.instance.account.secret_key).subscriptions.all(
-            include=['total_count'])['data']
-        for data in response:
-            plan = self.instance.account.plans.get(
-                stripe_id=data['plan']['id'])
-            self.get_or_create(stripe_id=data['id'],
-                               account=self.instance.account, plan=plan,
-                               defaults={'_api_data': data})
+    def sync(self, customer=None):
+        customer = customer or self._get_customer()
+        # TODO: Pagination
+        response = self.model._stripe.Customer.retrieve(
+            api_key=customer.account.secret_key,
+            id=customer.stripe_id).subscriptions.all(include=['total_count'])
+        for item in response['data']:
+            plan, created = customer.account.plans.get_or_create(
+                stripe_id=item['plan']['id'])
+            self.get_or_create(stripe_id=item['id'],
+                               account=customer.account, customer=customer,
+                               plan=plan, defaults={'_api_data': item})

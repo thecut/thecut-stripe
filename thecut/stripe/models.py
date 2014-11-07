@@ -5,7 +5,6 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
 from model_utils.fields import MonitorField
-from model_utils.managers import PassThroughManager
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.django_orm import CredentialsField, Storage
 import stripe
@@ -29,9 +28,11 @@ class APIDataMixin(models.Model):
     _api_data_updated_at = MonitorField('API data updated at',
                                         monitor='_api_data', editable=False)
 
+    _stripe = stripe
+
     def api_data(self, refresh=False):
         if refresh or not self._api_data:
-            self._api_data = self._get_api_data()
+            self._api_data = self.api
             self.save(update_fields=['_api_data', '_api_data_updated_at'])
         return self._api_data
 
@@ -70,8 +71,9 @@ class Account(APIDataMixin, models.Model):
         else:
             return 'Disconnected'
 
-    def _get_api_data(self):
-        return stripe.Account.retrieve(api_key=self.secret_key)
+    @property
+    def api(self):
+        return self._stripe.Account.retrieve(api_key=self.secret_key)
 
     def _get_connect_credentials(self, code):
         flow = self.application._get_connect_flow()
@@ -162,9 +164,10 @@ class Customer(APIDataMixin, models.Model):
     def __str__(self):
         return self.api_data().get('email') or self.stripe_id
 
-    def _get_api_data(self):
-        return stripe.Customer.retrieve(id=self.stripe_id,
-                                        api_key=self.account.secret_key)
+    @property
+    def api(self):
+        return self._stripe.Customer.retrieve(id=self.stripe_id,
+                                              api_key=self.account.secret_key)
 
 
 @python_2_unicode_compatible
@@ -177,13 +180,18 @@ class Plan(APIDataMixin, models.Model):
     stripe_id = models.CharField('Stripe ID', max_length=255, db_index=True,
                                  editable=False)
 
-    objects = managers.PlanManager.for_queryset_class(models.query.QuerySet)()
+    objects = managers.PlanManager.for_queryset_class(querysets.PlanQuerySet)()
 
     class Meta(object):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
         return self.api_data().get('name') or self.stripe_id
+
+    @property
+    def api(self):
+        return self._stripe.Plan.retrieve(id=self.stripe_id,
+                                          api_key=self.account.secret_key)
 
 
 class StandardAccount(Account):
@@ -213,10 +221,14 @@ class Subscription(APIDataMixin, models.Model):
                              editable=False, on_delete=models.PROTECT)
 
     objects = managers.SubscriptionManager.for_queryset_class(
-        models.query.QuerySet)()
+        querysets.SubscriptionQuerySet)()
 
     class Meta(object):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
         return self.plan.api_data().get('name') or self.stripe_id
+
+    @property
+    def api(self):
+        return self.customer.api.subscriptions.retrieve(id=self.stripe_id)
