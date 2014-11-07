@@ -15,14 +15,20 @@ class CustomerQuerySet(KnownFieldMixin, models.query.QuerySet):
     def _get_account(self):
         return self._get_known_field_value('account')
 
-    def create(self, account=None, **kwargs):
+    def create(self, account=None, plan=None, **kwargs):
         account = account or self._get_account()
+        if plan:
+            kwargs.update({'plan': plan.stripe_id})
         # Create a customer using the stripe API
         stripe_customer = self.model._stripe.Customer.create(
             api_key=account.secret_key, **kwargs)
         # Create a customer model instance
-        return super(CustomerQuerySet, self).create(
+        customer = super(CustomerQuerySet, self).create(
             stripe_id=stripe_customer.id, account=account)
+        # If a plan was provided, then we'll also want to sync subscriptions
+        if plan:
+            customer.subscriptions.sync()
+        return customer
 
 
 class PlanQuerySet(KnownFieldMixin, models.query.QuerySet):
