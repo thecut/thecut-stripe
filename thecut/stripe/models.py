@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from . import managers, querysets, settings
+from datetime import datetime
+from decimal import Decimal
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
@@ -169,6 +171,22 @@ class Customer(APIDataMixin, models.Model):
         return self._stripe.Customer.retrieve(id=self.stripe_id,
                                               api_key=self.account.secret_key)
 
+    # TODO: Temporary
+    def get_upcoming_invoice(self):
+        try:
+            invoice = self._stripe.Invoice.upcoming(
+                customer=self.stripe_id, api_key=self.account.secret_key)
+        except stripe.error.InvalidRequestError:
+            pass
+        else:
+            return invoice
+
+    # TODO: Temporary
+    def get_upcoming_invoice_date(self):
+        invoice = self.get_upcoming_invoice()
+        if invoice:
+            return datetime.fromtimestamp(invoice.date)
+
 
 @python_2_unicode_compatible
 class Plan(APIDataMixin, models.Model):
@@ -192,6 +210,10 @@ class Plan(APIDataMixin, models.Model):
     def api(self):
         return self._stripe.Plan.retrieve(id=self.stripe_id,
                                           api_key=self.account.secret_key)
+
+    @property
+    def amount(self):
+        return Decimal(self.api_data().get('amount', '0')) / 100
 
 
 class StandardAccount(Account):
@@ -229,6 +251,32 @@ class Subscription(APIDataMixin, models.Model):
     def __str__(self):
         return self.plan.api_data().get('name') or self.stripe_id
 
+    @staticmethod
+    def _from_timestamp(timestamp):
+        if timestamp:
+            return datetime.fromtimestamp(timestamp)
+
     @property
     def api(self):
         return self.customer.api.subscriptions.retrieve(id=self.stripe_id)
+
+    @property
+    def canceled_at(self):
+        return self._from_timestamp(self.api_data().get('canceled_at'))
+
+    @property
+    def current_period_ended_at(self):
+        return self._from_timestamp(self.api_data().get('current_period_end'))
+
+    @property
+    def current_period_started_at(self):
+        return self._from_timestamp(
+            self.api_data().get('current_period_start'))
+
+    @property
+    def ended_at(self):
+        return self._from_timestamp(self.api_data().get('ended_at'))
+
+    @property
+    def started_at(self):
+        return self._from_timestamp(self.api_data().get('start'))
