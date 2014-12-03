@@ -69,7 +69,7 @@ class Account(APIDataMixin, models.Model):
 
     def __str__(self):
         if self.secret_key:
-            return self.api_data().get('business_name')
+            return self.api_data().get('display_name')
         else:
             return 'Disconnected'
 
