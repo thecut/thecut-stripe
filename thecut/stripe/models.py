@@ -120,7 +120,7 @@ class Application(models.Model):
     client_id = models.TextField('Client ID')
 
     def __str__(self):
-        return '{0}'.format(self.client_id)
+        return '{0}'.format(self.account)
 
     def _get_connect_flow(self, redirect_uri=None):
         return OAuth2WebServerFlow(
