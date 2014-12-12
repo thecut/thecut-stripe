@@ -30,7 +30,7 @@ admin.site.register(Application, ApplicationAdmin)
 
 class ConnectedAccountAdmin(admin.ModelAdmin):
 
-    exclude = ['_secret_key', 'publishable_key']
+    exclude = ['_secret_key', '_publishable_key']
 
     form = forms.AccountForm
 

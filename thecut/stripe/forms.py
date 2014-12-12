@@ -11,16 +11,16 @@ def _strip_data(data):
 class AccountForm(forms.ModelForm):
 
     class Meta(object):
-        fields = ['_secret_key', 'publishable_key', 'application']
+        fields = ['_secret_key', '_publishable_key', 'application']
         model = Account
         widgets = {'_secret_key': forms.TextInput(),
-                   'publishable_key': forms.TextInput()}
+                   '_publishable_key': forms.TextInput()}
 
     def clean__secret_key(self):
         return _strip_data(self.cleaned_data.get('_secret_key', ''))
 
-    def clean_publishable_key(self):
-        return _strip_data(self.cleaned_data.get('publishable_key', ''))
+    def clean__publishable_key(self):
+        return _strip_data(self.cleaned_data.get('_publishable_key', ''))
 
 
 class ApplicationForm(forms.ModelForm):

@@ -65,7 +65,8 @@ class Account(APIDataMixin, models.Model):
 
     _secret_key = models.TextField('secret key', blank=True, default='')
 
-    publishable_key = models.TextField(blank=True, default='')
+    _publishable_key = models.TextField('publishable key', blank=True,
+                                        default='')
 
     def __str__(self):
         if self.secret_key:
@@ -93,6 +94,13 @@ class Account(APIDataMixin, models.Model):
     def oauth2_credentials(self, credentials):
         storage = self._get_oauth2_storage()
         return storage.put(credentials)
+
+    @property
+    def publishable_key(self):
+        token_data = (self.oauth2_credentials
+                      and self.oauth2_credentials.token_response)
+        return self._publishable_key or (
+            token_data and token_data.get('stripe_publishable_key'))
 
     @property
     def secret_key(self):
