@@ -3,12 +3,13 @@ from __future__ import absolute_import, unicode_literals
 from . import managers, querysets, settings
 from datetime import datetime
 from decimal import Decimal
+from django.core.cache import cache
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from jsonfield import JSONField
-from model_utils.fields import MonitorField
+from django.utils.functional import cached_property
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.django_orm import CredentialsField, Storage
+import json
 import stripe
 
 
@@ -22,24 +23,33 @@ else:
         [], ['^oauth2client\.django_orm\.CredentialsField'])
 
 
-class APIDataMixin(models.Model):
-    """Cache/store API responses."""
-
-    _api_data = JSONField('API data', null=True, blank=False, editable=False)
-
-    _api_data_updated_at = MonitorField('API data updated at',
-                                        monitor='_api_data', editable=False)
+class StripeAPIMixin(models.Model):
 
     _stripe = stripe
 
-    def api_data(self, refresh=False):
-        if refresh or not self._api_data:
-            self._api_data = self.api
-            self.save(update_fields=['_api_data', '_api_data_updated_at'])
-        return self._api_data
-
     class Meta(object):
         abstract = True
+
+    def _construct_api_resource(self, cache_data):
+        raise NotImplementedError('This method should be overridden.')
+
+    @cached_property
+    def _api_cache_name(self):
+        return self.__class__.__name__
+
+    def _get_api_resource(self):
+        raise NotImplementedError('This method should be overridden.')
+
+    def api(self, refresh=False):
+        key = 'thecut.stripe:{0}:{1}:api_data'.format(self._api_cache_name,
+                                                      self.pk)
+        if not refresh:
+            cache_data = cache.get(key)
+            if cache_data:
+                return self._construct_api_resource(cache_data)
+        resource = self._get_api_resource()
+        cache.set(key, json.dumps(resource))
+        return resource
 
 
 class AccountOAuth2Credentials(models.Model):
@@ -56,7 +66,7 @@ class AccountOAuth2Credentials(models.Model):
 
 
 @python_2_unicode_compatible
-class Account(APIDataMixin, models.Model):
+class Account(StripeAPIMixin, models.Model):
     """Stripe Account."""
 
     application = models.ForeignKey('stripe.Application', null=True,
@@ -70,13 +80,13 @@ class Account(APIDataMixin, models.Model):
 
     def __str__(self):
         if self.secret_key:
-            return self.api_data().get('display_name')
+            return self.api().get('display_name')
         else:
             return 'Disconnected'
 
-    @property
-    def api(self):
-        return self._stripe.Account.retrieve(api_key=self.secret_key)
+    @cached_property
+    def _api_cache_name(self):
+        return 'Account'  # This is so proxy models share the same cache name.
 
     def _get_connect_credentials(self, code):
         flow = self.application._get_connect_flow()
@@ -84,6 +94,13 @@ class Account(APIDataMixin, models.Model):
 
     def _get_oauth2_storage(self):
         return Storage(AccountOAuth2Credentials, 'id', self, 'credentials')
+
+    def _construct_api_resource(self, cache_data):
+        return self._stripe.Account.construct_from(json.loads(cache_data),
+                                                   api_key=self.secret_key)
+
+    def _get_api_resource(self):
+        return self._stripe.Account.retrieve(api_key=self.secret_key)
 
     @property
     def oauth2_credentials(self):
@@ -113,12 +130,12 @@ class Account(APIDataMixin, models.Model):
 
     def stripe_id(self):
         if self.secret_key:
-            return self.api_data().get('id')
+            return self.api().get('id')
     stripe_id.short_description = 'Stripe ID'
 
 
 @python_2_unicode_compatible
-class Application(models.Model):
+class Application(StripeAPIMixin, models.Model):
     """Stripe Connect Application."""
 
     account = models.ForeignKey('stripe.StandardAccount',
@@ -156,7 +173,7 @@ class ConnectedAccount(Account):
 
 
 @python_2_unicode_compatible
-class Customer(APIDataMixin, models.Model):
+class Customer(StripeAPIMixin, models.Model):
     """Stripe Customer."""
 
     account = models.ForeignKey('stripe.Account', related_name='customers',
@@ -172,10 +189,13 @@ class Customer(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.api_data().get('email') or self.stripe_id
+        return self.api().get('email') or self.stripe_id
 
-    @property
-    def api(self):
+    def _construct_api_resource(self, cache_data):
+        return self._stripe.Customer.construct_from(
+            json.loads(cache_data), api_key=self.account.secret_key)
+
+    def _get_api_resource(self):
         return self._stripe.Customer.retrieve(id=self.stripe_id,
                                               api_key=self.account.secret_key)
 
@@ -197,7 +217,7 @@ class Customer(APIDataMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Plan(APIDataMixin, models.Model):
+class Plan(StripeAPIMixin, models.Model):
     """Stripe Payment Plan."""
 
     account = models.ForeignKey('stripe.Account', related_name='plans',
@@ -212,16 +232,19 @@ class Plan(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.api_data().get('name') or self.stripe_id
+        return self.api().get('name') or self.stripe_id
 
-    @property
-    def api(self):
+    def _construct_api_resource(self, cache_data):
+        return self._stripe.Plan.construct_from(
+            json.loads(cache_data), api_key=self.account.secret_key)
+
+    def _get_api_resource(self):
         return self._stripe.Plan.retrieve(id=self.stripe_id,
                                           api_key=self.account.secret_key)
 
     @property
     def amount(self):
-        return Decimal(self.api_data().get('amount', '0')) / 100
+        return Decimal(self.api().get('amount', '0')) / 100
 
 
 class StandardAccount(Account):
@@ -234,7 +257,7 @@ class StandardAccount(Account):
 
 
 @python_2_unicode_compatible
-class Subscription(APIDataMixin, models.Model):
+class Subscription(StripeAPIMixin, models.Model):
     """Stripe Customer Subscription."""
 
     account = models.ForeignKey('stripe.Account', related_name='subscriptions',
@@ -257,7 +280,14 @@ class Subscription(APIDataMixin, models.Model):
         unique_together = ['account', 'stripe_id']
 
     def __str__(self):
-        return self.plan.api_data().get('name') or self.stripe_id
+        return self.plan.api().get('name') or self.stripe_id
+
+    def _construct_api_resource(self, cache_data):
+        return self.customer.api().subscriptions.construct_from(
+            json.loads(cache_data))
+
+    def _get_api_resource(self):
+        return self.customer.api().subscriptions.retrieve(id=self.stripe_id)
 
     @staticmethod
     def _from_timestamp(timestamp):
@@ -265,26 +295,22 @@ class Subscription(APIDataMixin, models.Model):
             return datetime.fromtimestamp(timestamp)
 
     @property
-    def api(self):
-        return self.customer.api.subscriptions.retrieve(id=self.stripe_id)
-
-    @property
     def canceled_at(self):
-        return self._from_timestamp(self.api_data().get('canceled_at'))
+        return self._from_timestamp(self.api().get('canceled_at'))
 
     @property
     def current_period_ended_at(self):
-        return self._from_timestamp(self.api_data().get('current_period_end'))
+        return self._from_timestamp(self.api().get('current_period_end'))
 
     @property
     def current_period_started_at(self):
         return self._from_timestamp(
-            self.api_data().get('current_period_start'))
+            self.api().get('current_period_start'))
 
     @property
     def ended_at(self):
-        return self._from_timestamp(self.api_data().get('ended_at'))
+        return self._from_timestamp(self.api().get('ended_at'))
 
     @property
     def started_at(self):
-        return self._from_timestamp(self.api_data().get('start'))
+        return self._from_timestamp(self.api().get('start'))

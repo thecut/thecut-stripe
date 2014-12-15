@@ -58,7 +58,7 @@ class SubscriptionQuerySet(KnownFieldMixin, models.query.QuerySet):
         customer = customer or self._get_customer()
         plan = plan or self._get_plan()
         # Create a subscription using the stripe API
-        stripe_subscription = customer.api.subscriptions.create(
+        stripe_subscription = customer.api().subscriptions.create(
             plan=plan.stripe_id, **kwargs)
         # Create a subscription model instance
         return super(SubscriptionQuerySet, self).create(

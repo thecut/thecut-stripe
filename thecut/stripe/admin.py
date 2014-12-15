@@ -36,7 +36,7 @@ class ConnectedAccountAdmin(admin.ModelAdmin):
 
     list_display = ['__str__', 'stripe_id', 'application']
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
     def get_readonly_fields(self, request, obj=None, **kwargs):
         readonly_fields = copy(
@@ -73,7 +73,7 @@ class SubscriptionInline(admin.StackedInline):
 
     extra = 0
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
     def has_add_permission(self, *args, **kwarg):
         return False
@@ -90,7 +90,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     list_filter = ['account', 'account__application']
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
     def application(self, obj):
         return obj.account.application
@@ -111,7 +111,7 @@ class PlanAdmin(admin.ModelAdmin):
 
     list_filter = ['account', 'account__application']
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
     def application(self, obj):
         return obj.account.application
@@ -134,7 +134,7 @@ class StandardAccountAdmin(admin.ModelAdmin):
 
     list_display = ['__str__', 'stripe_id']
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
 admin.site.register(StandardAccount, StandardAccountAdmin)
 
@@ -146,7 +146,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
     list_filter = ['plan', 'customer', 'account', 'account__application']
 
-    readonly_fields = ['stripe_id', '_api_data_updated_at']
+    readonly_fields = ['stripe_id']
 
     def application(self, obj):
         return obj.account.application

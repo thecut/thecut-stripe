@@ -19,8 +19,7 @@ class CustomerManager(PassThroughManager):
         response = self.model._stripe.Customer.all(
             api_key=account.secret_key, include=['total_count'])
         for item in response['data']:
-            self.get_or_create(stripe_id=item['id'], account=account,
-                               defaults={'_api_data': item})
+            self.get_or_create(stripe_id=item['id'], account=account)
 
 
 class PlanManager(PassThroughManager):
@@ -31,8 +30,7 @@ class PlanManager(PassThroughManager):
         response = self.model._stripe.Plan.all(
             api_key=account.secret_key, include=['total_count'])
         for item in response['data']:
-            self.get_or_create(stripe_id=item['id'], account=account,
-                               defaults={'_api_data': item})
+            self.get_or_create(stripe_id=item['id'], account=account)
 
 
 class StandardAccountManager(PassThroughManager):
@@ -53,8 +51,7 @@ class SubscriptionManager(PassThroughManager):
             id=customer.stripe_id).subscriptions.all(include=['total_count'])
         for item in response['data']:
             plan, created = customer.account.plans.get_or_create(
-                stripe_id=item['plan']['id'],
-                defaults={'_api_data': item['plan']})
+                stripe_id=item['plan']['id'])
             self.get_or_create(stripe_id=item['id'],
                                account=customer.account, customer=customer,
-                               plan=plan, defaults={'_api_data': item})
+                               plan=plan)
