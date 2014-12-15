@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
-from .models import ConnectedAccount
+from ..models import ConnectedAccount
 from django.contrib.admin.options import csrf_protect_m
 from django.contrib.auth.decorators import permission_required
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
