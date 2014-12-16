@@ -299,11 +299,11 @@ class Subscription(StripeAPIMixin, models.Model):
         return self._from_timestamp(self.api().get('canceled_at'))
 
     @property
-    def current_period_ended_at(self):
+    def current_period_ends_at(self):
         return self._from_timestamp(self.api().get('current_period_end'))
 
     @property
-    def current_period_started_at(self):
+    def current_period_starts_at(self):
         return self._from_timestamp(self.api().get('current_period_start'))
 
     @property
