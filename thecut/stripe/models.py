@@ -283,8 +283,8 @@ class Subscription(StripeAPIMixin, models.Model):
         return self.plan.api().get('name') or self.stripe_id
 
     def _construct_api_resource(self, cache_data):
-        return self.customer.api().subscriptions.construct_from(
-            json.loads(cache_data))
+        return self._stripe.Subscription.construct_from(
+            json.loads(cache_data), api_key=self.account.secret_key)
 
     def _get_api_resource(self):
         return self.customer.api().subscriptions.retrieve(id=self.stripe_id)
@@ -304,8 +304,7 @@ class Subscription(StripeAPIMixin, models.Model):
 
     @property
     def current_period_started_at(self):
-        return self._from_timestamp(
-            self.api().get('current_period_start'))
+        return self._from_timestamp(self.api().get('current_period_start'))
 
     @property
     def ended_at(self):
