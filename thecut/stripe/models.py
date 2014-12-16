@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
-from . import managers, querysets, settings
-from datetime import datetime
+from . import managers, querysets, settings, utils
 from decimal import Decimal
 from django.core.cache import cache
 from django.db import models
@@ -213,7 +212,7 @@ class Customer(StripeAPIMixin, models.Model):
     def get_upcoming_invoice_date(self):
         invoice = self.get_upcoming_invoice()
         if invoice:
-            return datetime.fromtimestamp(invoice.date)
+            utils.parse_timestamp(invoice.date)
 
 
 @python_2_unicode_compatible
@@ -289,27 +288,22 @@ class Subscription(StripeAPIMixin, models.Model):
     def _get_api_resource(self):
         return self.customer.api().subscriptions.retrieve(id=self.stripe_id)
 
-    @staticmethod
-    def _from_timestamp(timestamp):
-        if timestamp:
-            return datetime.fromtimestamp(timestamp)
-
     @property
     def canceled_at(self):
-        return self._from_timestamp(self.api().get('canceled_at'))
+        return utils.parse_timestamp(self.api().get('canceled_at'))
 
     @property
     def current_period_ends_at(self):
-        return self._from_timestamp(self.api().get('current_period_end'))
+        return utils.parse_timestamp(self.api().get('current_period_end'))
 
     @property
     def current_period_starts_at(self):
-        return self._from_timestamp(self.api().get('current_period_start'))
+        return utils.parse_timestamp(self.api().get('current_period_start'))
 
     @property
     def ended_at(self):
-        return self._from_timestamp(self.api().get('ended_at'))
+        return utils.parse_timestamp(self.api().get('ended_at'))
 
     @property
     def started_at(self):
-        return self._from_timestamp(self.api().get('start'))
+        return utils.parse_timestamp(self.api().get('start'))
