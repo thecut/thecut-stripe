@@ -5,6 +5,7 @@ from .models import (Application, ConnectedAccount, Customer, Plan,
                      StandardAccount, Subscription)
 from copy import copy
 from django.conf.urls import patterns, url
+from django.core.urlresolvers import reverse
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 
@@ -13,9 +14,24 @@ class ApplicationAdmin(admin.ModelAdmin):
 
     form = forms.ApplicationForm
 
-    list_display = ['__str__', 'account']
+    list_display = ['__str__', 'account', 'callback_uri']
 
     readonly_fields = []
+
+    def _get_callback_uri(self, request):
+        url = reverse(
+            '{0}:stripe_connect_oauth2_callback'.format(self.admin_site.name))
+        return request.build_absolute_uri(url)
+
+    @admin.options.csrf_protect_m
+    def changelist_view(self, request, *args, **kwargs):
+        self._callback_uri = self._get_callback_uri(request)
+        return super(ApplicationAdmin, self).changelist_view(request, *args,
+                                                             **kwargs)
+
+    def callback_uri(self, *args, **kwargs):
+        return self._callback_uri
+    callback_uri.short_description = 'Callback URI'
 
     def get_readonly_fields(self, request, obj=None, **kwargs):
         readonly_fields = copy(
