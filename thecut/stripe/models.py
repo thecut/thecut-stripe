@@ -39,9 +39,11 @@ class StripeAPIMixin(models.Model):
     def _get_api_resource(self):
         raise NotImplementedError('This method should be overridden.')
 
-    def api(self, refresh=False):
+    def api(self, refresh=False, clear=False):
         key = 'thecut.stripe:{0}:{1}:api_data'.format(self._api_cache_name,
                                                       self.pk)
+        if clear:
+            return cache.delete(key)
         if not refresh:
             cache_data = cache.get(key)
             if cache_data:
