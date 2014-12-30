@@ -11,5 +11,7 @@ setup(
     version=get_git_version(),
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['stripe==1.19.1'],
+    install_requires=['django-jsonfield==0.9.13', 'django-model-utils==2.2',
+                      'oauth2client==1.3.1', 'sphinx==1.2.3',
+                      'stripe==1.19.1'],
 )

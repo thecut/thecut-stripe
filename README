@@ -1,3 +1,18 @@
 =============
 thecut.stripe
 =============
+
+The purpose of this Django app is to wrap resources from the stripe API library
+with Django models, to allow easy ORM relationships from other apps in your
+project.
+
+Currenly in development, at an experimental stage. Probably not suitable for
+production use.
+
+
+TODO
+----
+
+* More wrappers for other stripe resources.
+* Tests
+* Documentation
