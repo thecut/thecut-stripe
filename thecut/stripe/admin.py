@@ -7,10 +7,28 @@ from copy import copy
 from django.conf.urls import patterns, url
 from django.core.urlresolvers import reverse
 from django.contrib import admin
+from django.contrib.admin.utils import model_ngettext
 from django.http import HttpResponseRedirect
+from django.utils.translation import ungettext
 
 
-class ApplicationAdmin(admin.ModelAdmin):
+class StripeAPIActionMixin(object):
+
+    actions = ['clear_api_cache']
+
+    def clear_api_cache(self, request, queryset):
+        for instance in queryset:
+            instance.api(clear=True)
+        count = len(queryset)
+        message = 'Cleared API cache for {count} {items}.'.format(
+            count=count, items=model_ngettext(self.opts, count))
+        self.message_user(request, message)
+
+    clear_api_cache.short_description = ('Clear API cache for selected '
+                                         '%(verbose_name_plural)s')
+
+
+class ApplicationAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     form = forms.ApplicationForm
 
@@ -44,7 +62,7 @@ class ApplicationAdmin(admin.ModelAdmin):
 admin.site.register(Application, ApplicationAdmin)
 
 
-class ConnectedAccountAdmin(admin.ModelAdmin):
+class ConnectedAccountAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     exclude = ['_secret_key', '_publishable_key']
 
@@ -83,7 +101,7 @@ class ConnectedAccountAdmin(admin.ModelAdmin):
 admin.site.register(ConnectedAccount, ConnectedAccountAdmin)
 
 
-class SubscriptionInline(admin.StackedInline):
+class SubscriptionInline(StripeAPIActionMixin, admin.StackedInline):
 
     model = Subscription
 
@@ -98,7 +116,7 @@ class SubscriptionInline(admin.StackedInline):
         return False
 
 
-class CustomerAdmin(admin.ModelAdmin):
+class CustomerAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     inlines = [SubscriptionInline]
 
@@ -121,7 +139,7 @@ class CustomerAdmin(admin.ModelAdmin):
 admin.site.register(Customer, CustomerAdmin)
 
 
-class PlanAdmin(admin.ModelAdmin):
+class PlanAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     list_display = ['__str__', 'stripe_id', 'account', 'application']
 
@@ -142,7 +160,7 @@ class PlanAdmin(admin.ModelAdmin):
 admin.site.register(Plan, PlanAdmin)
 
 
-class StandardAccountAdmin(admin.ModelAdmin):
+class StandardAccountAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     exclude = ['application']
 
@@ -155,7 +173,7 @@ class StandardAccountAdmin(admin.ModelAdmin):
 admin.site.register(StandardAccount, StandardAccountAdmin)
 
 
-class SubscriptionAdmin(admin.ModelAdmin):
+class SubscriptionAdmin(StripeAPIActionMixin, admin.ModelAdmin):
 
     list_display = ['__str__', 'stripe_id', 'customer', 'account',
                     'application']
