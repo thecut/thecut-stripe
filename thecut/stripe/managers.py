@@ -3,6 +3,19 @@ from __future__ import absolute_import, unicode_literals
 from model_utils.managers import PassThroughManager
 
 
+class ChargeManager(PassThroughManager):
+
+    def sync(self, customer=None):
+        # TODO: Pagination
+        customer = customer or self._get_customer()
+        response = self.model._stripe.Customer.retrieve(
+            api_key=customer.account.secret_key,
+            id=customer.stripe_id).charges().all(include=['total_count'])
+        for item in response['data']:
+            self.get_or_create(stripe_id=item['id'], account=customer.account,
+                               customer=customer)
+
+
 class ConnectedAccountManager(PassThroughManager):
 
     def get_queryset(self, *args, **kwargs):

@@ -10,6 +10,22 @@ class KnownFieldMixin(object):
         return self._known_related_objects[field].values()[0]
 
 
+class ChargeQuerySet(KnownFieldMixin, models.query.QuerySet):
+
+    def _get_customer(self):
+        return self._get_known_field_value('customer')
+
+    def create(self, customer=None, **kwargs):
+        customer = customer or self._get_customer()
+        # Create a charge using the stripe API
+        stripe_charge = customer.api().charges().create(
+            customer=customer.stripe_id, **kwargs)
+        # Create a charge model instance
+        return super(ChargeQuerySet, self).create(
+            stripe_id=stripe_charge.id, account=customer.account,
+            customer=customer)
+
+
 class CustomerQuerySet(KnownFieldMixin, models.query.QuerySet):
 
     def _get_account(self):

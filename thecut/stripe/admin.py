@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from . import forms, views
-from .models import (Application, ConnectedAccount, Customer, Plan,
+from .models import (Application, ConnectedAccount, Charge, Customer, Plan,
                      StandardAccount, Subscription)
 from copy import copy
 from django.conf.urls import patterns, url
@@ -60,6 +60,27 @@ class ApplicationAdmin(StripeAPIActionMixin, admin.ModelAdmin):
         return readonly_fields
 
 admin.site.register(Application, ApplicationAdmin)
+
+
+class ChargeAdmin(StripeAPIActionMixin, admin.ModelAdmin):
+
+    list_display = ['__str__', 'stripe_id', 'account', 'application']
+
+    list_filter = ['account', 'account__application']
+
+    readonly_fields = ['stripe_id']
+
+    def application(self, obj):
+        return obj.account.application
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(ChargeAdmin, self).get_queryset(*args, **kwargs)
+        return queryset.select_related('account', 'account__application')
+
+    def has_add_permission(self, *args, **kwargs):
+        return False
+
+admin.site.register(Charge, ChargeAdmin)
 
 
 class ConnectedAccountAdmin(StripeAPIActionMixin, admin.ModelAdmin):

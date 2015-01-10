@@ -164,6 +164,41 @@ class Application(StripeAPIMixin, models.Model):
         return flow.step1_get_authorize_url()
 
 
+@python_2_unicode_compatible
+class Charge(StripeAPIMixin, models.Model):
+    """Stripe Charge."""
+
+    account = models.ForeignKey('stripe.Account', related_name='charges',
+                                editable=False, on_delete=models.PROTECT)
+
+    stripe_id = models.CharField('Stripe ID', max_length=255, db_index=True,
+                                 editable=False)
+
+    customer = models.ForeignKey('stripe.Customer',
+                                 related_name='charges', editable=False,
+                                 on_delete=models.PROTECT)
+
+    objects = managers.ChargeManager.for_queryset_class(
+        querysets.ChargeQuerySet)()
+
+    class Meta(object):
+        unique_together = ['account', 'stripe_id']
+
+    def __str__(self):
+        return self.stripe_id
+
+    def _construct_api_resource(self, cache_data):
+        return self._stripe.Charge.construct_from(
+            json.loads(cache_data), api_key=self.account.secret_key)
+
+    def _get_api_resource(self):
+        return self.customer.api().charges.retrieve(id=self.stripe_id)
+
+    @property
+    def amount(self):
+        return Decimal(self.api().get('amount', '0')) / 100
+
+
 class ConnectedAccount(Account):
 
     objects = managers.ConnectedAccountManager.for_queryset_class(
