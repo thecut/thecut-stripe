@@ -7,7 +7,11 @@ from copy import copy
 from django.conf.urls import patterns, url
 from django.core.urlresolvers import reverse
 from django.contrib import admin
-from django.contrib.admin.utils import model_ngettext
+try:
+    from django.contrib.admin.utils import model_ngettext
+except ImportError:
+    # Django 1.6
+    from django.contrib.admin.util import model_ngettext
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
