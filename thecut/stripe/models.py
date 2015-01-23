@@ -81,7 +81,12 @@ class Account(StripeAPIMixin, models.Model):
 
     def __str__(self):
         if self.secret_key:
-            return self.api().get('display_name')
+            try:
+                return self.api().get('display_name')
+            except Exception as e:
+                # This is to stop exception from Stripe breaking admin site.
+                # See Note in `stripe_id`
+                return "{}".format(e)
         else:
             return 'Disconnected'
 
@@ -131,7 +136,50 @@ class Account(StripeAPIMixin, models.Model):
 
     def stripe_id(self):
         if self.secret_key:
-            return self.api().get('id')
+            try:
+                return self.api().get('id')
+            except:
+                return None
+
+                # TODO: Note: this is probably a bad idea.
+                # But as a temporary workaround it returns None as if 
+                # 'secret_key' not set.
+
+                # Reason for this is broken admin site (stripe_id is included in
+                # list) if application access has been revoked / key has expired.
+
+                # Stripe started to throw this kind of exception on opening of
+                # ConnectedAccount list:
+
+                # Exception Type: AuthenticationError at /admin/stripe/connectedaccount/
+                # Exception Value: Expired API key provided: sk_test_********************KG8l.  Application access may have been revoked.
+
+                #  Traceback (only relevant parts):
+# File "lib/python2.7/site-packages/django/contrib/admin/templatetags/admin_list.py" in items_for_result
+#   185.             f, attr, value = lookup_field(field_name, result, cl.model_admin)
+# File "lib/python2.7/site-packages/django/contrib/admin/util.py" in lookup_field
+#   258.                 value = attr()
+# File "lib/python2.7/site-packages/thecut/stripe/models.py" in stripe_id
+#   137.             return self.api().get('id')
+# File "lib/python2.7/site-packages/thecut/stripe/models.py" in api
+#   51.         resource = self._get_api_resource()
+# File "lib/python2.7/site-packages/thecut/stripe/models.py" in _get_api_resource
+#   107.         return self._stripe.Account.retrieve(api_key=self.secret_key)
+# File "lib/python2.7/site-packages/stripe/resource.py" in retrieve
+#   240.                                                          api_key=api_key)
+# File "lib/python2.7/site-packages/stripe/resource.py" in retrieve
+#   186.         instance.refresh()
+# File "lib/python2.7/site-packages/stripe/resource.py" in refresh
+#   190.         self.refresh_from(self.request('get', self.instance_url()))
+# File "lib/python2.7/site-packages/stripe/resource.py" in request
+#   131.         response, api_key = requestor.request(method, url, params)
+# File "lib/python2.7/site-packages/stripe/api_requestor.py" in request
+#   124.         resp = self.interpret_response(rbody, rcode)
+# File "lib/python2.7/site-packages/stripe/api_requestor.py" in interpret_response
+#   231.             self.handle_api_error(rbody, rcode, resp)
+# File "lib/python2.7/site-packages/stripe/api_requestor.py" in handle_api_error
+#   141.                 err.get('message'), rbody, rcode, resp)
+#
     stripe_id.short_description = 'Stripe ID'
 
 
