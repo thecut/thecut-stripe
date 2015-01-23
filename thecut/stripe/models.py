@@ -83,10 +83,10 @@ class Account(StripeAPIMixin, models.Model):
         if self.secret_key:
             try:
                 return self.api().get('display_name')
-            except Exception as e:
+            except stripe.error.AuthenticationError:
                 # This is to stop exception from Stripe breaking admin site.
-                # See Note in `stripe_id`
-                return "{}".format(e)
+                # See also Note in `stripe_id`
+                return 'Authentication error'
         else:
             return 'Disconnected'
 
