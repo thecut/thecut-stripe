@@ -107,6 +107,8 @@ class CardForm(forms.Form):
             raise ImproperlyConfigured(
                 'You should *never* be processing data from card fields in '
                 'this form!')
+        # This is required for Django 1.6 (but optional in 1.7)
+        return self.cleaned_data
 
     def get_stripe_customer(self):
         raise NotImplementedError('You should override this method, if you '
