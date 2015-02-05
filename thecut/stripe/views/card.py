@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
+from django.contrib import messages
 from ..forms import CardForm
 from django.forms import Form
 from django.http import Http404
@@ -25,7 +26,12 @@ class CreateView(CustomerMixin, generic.FormView):
     form_class = CardForm
 
     def form_valid(self, form, *args, **kwargs):
-        form.save(stripe_customer=self.get_stripe_customer())
+        try:
+            form.save(stripe_customer=self.get_stripe_customer())
+        except stripe.CardError as e:
+            messages.error(self.request, "Can't add card: {}".format(e.message))
+            return super(CreateView, self).form_invalid(form, *args, **kwargs)
+
         return super(CreateView, self).form_valid(form, *args, **kwargs)
 
     def get_form_kwargs(self, *args, **kwargs):
