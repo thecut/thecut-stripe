@@ -224,6 +224,7 @@ class Charge(StripeAPIMixin, models.Model):
 
     customer = models.ForeignKey('stripe.Customer',
                                  related_name='charges', editable=False,
+                                 null=True, blank=True,
                                  on_delete=models.PROTECT)
 
     objects = managers.ChargeManager.for_queryset_class(
@@ -240,7 +241,8 @@ class Charge(StripeAPIMixin, models.Model):
             json.loads(cache_data), api_key=self.account.secret_key)
 
     def _get_api_resource(self):
-        return self.customer.api().charges.retrieve(id=self.stripe_id)
+        return self._stripe.Charge.retrieve(id=self.stripe_id,
+                                            api_key=self.account.secret_key)
 
     @property
     def amount(self):
