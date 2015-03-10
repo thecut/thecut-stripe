@@ -13,7 +13,6 @@ except ImportError:
     # Django 1.6
     from django.contrib.admin.util import model_ngettext
 from django.http import HttpResponseRedirect
-from django.utils.translation import ungettext
 
 
 class StripeAPIActionMixin(object):
