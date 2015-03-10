@@ -308,8 +308,7 @@ class Customer(StripeAPIMixin, models.Model):
         Fetches stripe api ``sources`` list and returns only ``card`` objects.
         :return: :py:class:``list`` of :py:class:``stripe.resource.Card``
         """
-        return [c for c in self.api().sources.all().data
-                if c['object'] == 'card']
+        return self.api().sources.all(object='card').data
 
     def get_card(self, card_id):
         """
