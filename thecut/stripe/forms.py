@@ -120,13 +120,13 @@ class CardForm(forms.Form):
             stripe_customer = self.get_stripe_customer()
 
         # Save card to customer
-        card = stripe_customer.api().cards.create(
+        card = stripe_customer.api().sources.create(
             card=self.cleaned_data['stripe_token'])
 
         # Set as default card
         if self.cleaned_data['set_default']:
             api = stripe_customer.api()
-            api.default_card = card.id
+            api.default_source = card.id
             api.save()
             stripe_customer.api(refresh=True)  # Refresh API cache
 

@@ -51,7 +51,7 @@ class EditMixin(CustomerMixin, generic.FormView):
     def get_card(self):
         stripe_customer = self.get_stripe_customer()
         try:
-            card = stripe_customer.api().cards.retrieve(self.kwargs['card_id'])
+            card = stripe_customer.get_card(self.kwargs['card_id'])
         except stripe.error.InvalidRequestError:
             raise Http404('Card not found.')
         return card
@@ -67,7 +67,7 @@ class DefaultView(EditMixin):
     def form_valid(self, form, *args, **kwargs):
         stripe_customer = self.get_stripe_customer()
         api = stripe_customer.api()
-        api.default_card = self.get_card().id
+        api.default_source = self.get_card().id
         api.save()
         stripe_customer.api(refresh=True)  # Refresh API cache
         return super(DefaultView, self).form_valid(form, *args, **kwargs)
