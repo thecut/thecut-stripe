@@ -12,5 +12,5 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=['django-model-utils==2.2', 'oauth2client==1.3.1',
-                      'stripe==1.19.1'],
+                      'stripe==1.21.0'],
 )
