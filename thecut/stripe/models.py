@@ -13,6 +13,8 @@ import stripe
 
 
 # South introspection rules for oauth2client's CredentialsField
+from thecut.stripe import errors
+
 try:
     from south.modelsinspector import add_introspection_rules
 except ImportError:
@@ -103,7 +105,7 @@ class Account(StripeAPIMixin, models.Model):
 
     def _construct_api_resource(self, cache_data):
         return self._stripe.Account.construct_from(json.loads(cache_data),
-                                                   api_key=self.secret_key)
+                                                   key=self.secret_key)
 
     def _get_api_resource(self):
         return self._stripe.Account.retrieve(api_key=self.secret_key)
@@ -238,7 +240,7 @@ class Charge(StripeAPIMixin, models.Model):
 
     def _construct_api_resource(self, cache_data):
         return self._stripe.Charge.construct_from(
-            json.loads(cache_data), api_key=self.account.secret_key)
+            json.loads(cache_data), key=self.account.secret_key)
 
     def _get_api_resource(self):
         return self._stripe.Charge.retrieve(id=self.stripe_id,
@@ -279,7 +281,7 @@ class Customer(StripeAPIMixin, models.Model):
 
     def _construct_api_resource(self, cache_data):
         return self._stripe.Customer.construct_from(
-            json.loads(cache_data), api_key=self.account.secret_key)
+            json.loads(cache_data), key=self.account.secret_key)
 
     def _get_api_resource(self):
         return self._stripe.Customer.retrieve(id=self.stripe_id,
@@ -300,6 +302,30 @@ class Customer(StripeAPIMixin, models.Model):
         invoice = self.get_upcoming_invoice()
         if invoice:
             utils.parse_timestamp(invoice.date)
+
+    def get_cards(self):
+        """
+        Fetches stripe api ``sources`` list and returns only ``card`` objects.
+        :return: :py:class:``list`` of :py:class:``stripe.resource.Card``
+        """
+        return [c for c in self.api().sources.all().data
+                if c['object'] == 'card']
+
+    def get_card(self, card_id):
+        """
+        Retrieves stripe api ``source`` but returns it only of it is  a ``card``
+
+        :return: :py:class:``stripe.resource.Card`` or raises
+            :py:class:``.errors/SourceIsWrongType`` if type of returned object
+            is not ``card``.
+        """
+        source = self.api().sources.retrieve(card_id)
+        if source['object'] != 'card':
+            raise errors.SourceIsOfWrongType(
+                'Got {} instead of card, card_id={}'.format(
+                    source['object'], card_id))
+
+        return source
 
 
 @python_2_unicode_compatible
@@ -322,7 +348,7 @@ class Plan(StripeAPIMixin, models.Model):
 
     def _construct_api_resource(self, cache_data):
         return self._stripe.Plan.construct_from(
-            json.loads(cache_data), api_key=self.account.secret_key)
+            json.loads(cache_data), key=self.account.secret_key)
 
     def _get_api_resource(self):
         return self._stripe.Plan.retrieve(id=self.stripe_id,
@@ -370,7 +396,7 @@ class Subscription(StripeAPIMixin, models.Model):
 
     def _construct_api_resource(self, cache_data):
         return self._stripe.Subscription.construct_from(
-            json.loads(cache_data), api_key=self.account.secret_key)
+            json.loads(cache_data), key=self.account.secret_key)
 
     def _get_api_resource(self):
         return self.customer.api().subscriptions.retrieve(id=self.stripe_id)
