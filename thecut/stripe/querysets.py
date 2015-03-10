@@ -45,11 +45,11 @@ class ChargeQuerySet(KnownFieldMixin, models.query.QuerySet):
         """
         Charges can be created in various different ways:
 
-        1) Charge.objects.create(account=aa, amount=xx, card=yy)
+        1) Charge.objects.create(account=aa, amount=xx, source=card_yy)
             - no customer set, charge on a connected account
             - account has to be provided
-        2) account.charges.create(amount=xx, card=yy)
-        3) customer.charges.create(amount=xx[, card=yy])
+        2) account.charges.create(amount=xx, source=card_yy)
+        3) customer.charges.create(amount=xx[, source=card_yy])
             - Resulting charge will have customer set
             - account is optional
 
