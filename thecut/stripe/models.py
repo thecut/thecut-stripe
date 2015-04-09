@@ -308,6 +308,9 @@ class Customer(StripeAPIMixin, models.Model):
         Fetches stripe api ``sources`` list and returns only ``card`` objects.
         :return: :py:class:``list`` of :py:class:``stripe.resource.Card``
         """
+        api = self.api()
+        if api.get('deleted'):
+            return []
         return self.api().sources.all(object='card').data
 
     def get_card(self, card_id):
@@ -318,6 +321,10 @@ class Customer(StripeAPIMixin, models.Model):
             :py:class:``.errors/SourceIsWrongType`` if type of returned object
             is not ``card``.
         """
+        api = self.api()
+        if api.get('deleted'):
+            return None
+
         source = self.api().sources.retrieve(card_id)
         if source['object'] != 'card':
             raise errors.SourceIsOfWrongType(
